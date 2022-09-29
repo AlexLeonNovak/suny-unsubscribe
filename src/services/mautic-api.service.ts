@@ -6,6 +6,32 @@ const { MAUTIC_API_URL, MAUTIC_API_USER, MAUTIC_API_PASSWORD } = process.env;
 
 export type TChannel = 'message' | 'email';
 
+export type TOrderDirection = 'ASC' | 'DESC';
+
+export type TWhereExpression = 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'is' | 'in' | 'nin' | 'contains' | 'member_of' | 'starts_with' | 'ends_with';
+
+type TWhereOrAnd = 'orX' | 'andX';
+
+type TWhereValue<T> = T extends TWhereOrAnd ? WhereClause[] : string | number;
+
+type TWhereColumn<T> = T extends TWhereOrAnd ? never : string;
+
+interface WhereClause {
+  col?: TWhereColumn<TWhereExpression | TWhereOrAnd>;
+  expr: TWhereExpression | TWhereOrAnd;
+  val: TWhereValue<TWhereExpression | TWhereOrAnd>;
+}
+
+export interface ParamQuery {
+  start?: number;
+  limit?: number;
+  order?: {
+    col: string;
+    dir?: TOrderDirection;
+  }[],
+  where?: WhereClause[]
+}
+
 export interface DNCContact {
   id: number;
   lead_id: number;
@@ -26,6 +52,11 @@ export interface DNCData extends DNCResponse {
   endId: number;
 }
 
+interface IdInfo {
+  startId: number;
+  endId: number;
+}
+
 export class MauticApiService {
   private readonly api: AxiosInstance;
   constructor() {
@@ -38,46 +69,114 @@ export class MauticApiService {
     })
   }
 
-  async getUnsubscribeContacts(start = 0, limit = 100): Promise<DNCData> {
-    const response = await this.api.get<DNCResponse>('stats/lead_donotcontact', {
-      params: {
-        start,
+  private async fetchDNC(params: ParamQuery) {
+    const { data } = await this.api.get<DNCResponse>('stats/lead_donotcontact', {
+      params,
+      paramsSerializer: params => qs.stringify(params)
+    });
+    return data;
+  }
+
+  async getDNCContacts(limit = 10): Promise<DNCContact[]> {
+    const ids = this.getIds();
+    let dncData: DNCContact[] = [];
+    if (!ids) {
+      const { stats } = await this.fetchDNC({
+        limit,
+        order: [
+          {
+            col: 'id',
+            dir: 'DESC',
+          }
+        ],
+        where: [
+          {
+            col: 'channel',
+            expr: 'eq',
+            val: 'email',
+          }
+        ]
+      });
+      dncData = stats;
+      this.updateIds(dncData);
+      return dncData;
+    }
+    if (ids.startId) {
+      const { stats } = await this.fetchDNC({
         limit,
         order: [
           {
             col: 'id',
             dir: 'ASC'
           }
+        ],
+        where: [
+          {
+            col: 'id',
+            expr: 'gt',
+            val: ids.startId
+          },
+          {
+            col: 'channel',
+            expr: 'eq',
+            val: 'email',
+          }
         ]
-      },
-      paramsSerializer: params => qs.stringify(params)
-    });
-    const {data} = response;
-    let startId = 0, endId = 0;
-    if (data.stats.length) {
-      startId = data.stats[0].id;
-      endId = data.stats[data.stats.length - 1].id;
+      });
+      dncData = stats.reverse();
+      if (dncData.length) {
+        this.saveIds({ startId: dncData[0].id, endId: ids.endId });
+      }
+      if (dncData.length < limit && ids.endId) {
+        const { stats } = await this.fetchDNC({
+          limit: limit - dncData.length,
+          order: [
+            {
+              col: 'id',
+              dir: 'DESC'
+            }
+          ],
+          where: [
+            {
+              col: 'id',
+              expr: 'lt',
+              val: ids.endId
+            },
+            {
+              col: 'channel',
+              expr: 'eq',
+              val: 'email',
+            }
+          ]
+        });
+        dncData = [...dncData, ...stats];
+        this.updateIds(dncData);
+      }
     }
 
-    return {
-      ...data,
-      startId,
-      endId,
-      limit,
-    };
+
+    return dncData;
   }
 
-  saveLastId(id) {
-    fs.writeFileSync('mautic.json', JSON.stringify({ id }));
+  updateIds(dncData: DNCContact[]) {
+    let startId = 0, endId = 0;
+    if (dncData.length) {
+      startId = dncData[0].id;
+      endId = dncData[dncData.length - 1].id;
+    }
+
+    this.saveIds({ startId, endId })
   }
 
-  getLastId() {
+  saveIds(data: IdInfo) {
+    fs.writeFileSync('mautic.json', JSON.stringify(data));
+  }
+
+  getIds(): IdInfo | null {
     try {
-      const data = fs.readFileSync('mautic.json', 'utf8');
-      const {id} = JSON.parse(data);
-      return id;
+      return JSON.parse(fs.readFileSync('mautic.json', 'utf8'));
     } catch (e) {
-      return 0;
+      return null;
     }
   }
 }

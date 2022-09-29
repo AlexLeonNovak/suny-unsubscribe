@@ -9,16 +9,17 @@ const bootstrap = async () => {
   const sunyApi = new SunyApiService();
 
   try {
-    const { endId, stats } = await mauticApi.getUnsubscribeContacts(mauticApi.getLastId());
-    for (const { lead_id, channel } of stats) {
-      const result = await sunyApi.removeMailing(lead_id);
-      console.log(result);
-      logger.log(JSON.stringify({
-        lead_id,
-        channel
-      }))
-    }
-    mauticApi.saveLastId(endId);
+    const dncContacts = await mauticApi.getDNCContacts();
+    console.log(dncContacts);
+    // for (const { lead_id, channel } of stats) {
+      // const result = await sunyApi.removeMailing(lead_id);
+      // console.log(result);
+      // logger.log(JSON.stringify({
+      //   lead_id,
+      //   channel
+      // }));
+    // }
+
   } catch (e) {
     logger.error(e.message);
     console.error(e);
