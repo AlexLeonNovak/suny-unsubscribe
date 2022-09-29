@@ -119,3 +119,4 @@ dist
 .idea/
 
 log.db
+mautic.json
