@@ -10,16 +10,13 @@ const bootstrap = async () => {
 
   try {
     const dncContacts = await mauticApi.getDNCContacts();
-    console.log(dncContacts);
-    // for (const { lead_id, channel } of stats) {
-      // const result = await sunyApi.removeMailing(lead_id);
-      // console.log(result);
-      // logger.log(JSON.stringify({
-      //   lead_id,
-      //   channel
-      // }));
-    // }
-
+    for (const { lead_id } of dncContacts) {
+      const result = await sunyApi.removeMailing(lead_id);
+      logger.log(JSON.stringify({
+        lead_id,
+        result
+      }));
+    }
   } catch (e) {
     logger.error(e.message);
     console.error(e);
