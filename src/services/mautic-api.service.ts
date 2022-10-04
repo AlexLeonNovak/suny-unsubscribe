@@ -98,7 +98,7 @@ export class MauticApiService {
           }
         ]
       });
-      dncData = stats;
+      dncData = stats || [];
       this.updateIds(dncData);
       return dncData;
     }
@@ -160,13 +160,9 @@ export class MauticApiService {
   }
 
   updateIds(dncData: DNCContact[]) {
-    let startId = 0, endId = 0;
     if (dncData.length) {
-      startId = dncData[0].id;
-      endId = dncData[dncData.length - 1].id;
+      this.saveIds({ startId: dncData[0].id, endId: dncData[dncData.length - 1].id })
     }
-
-    this.saveIds({ startId, endId })
   }
 
   saveIds(data: IdInfo) {
