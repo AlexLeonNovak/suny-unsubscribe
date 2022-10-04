@@ -2,7 +2,7 @@ import axios, {AxiosInstance} from 'axios';
 import qs from 'qs'
 import * as fs from 'fs';
 
-const { MAUTIC_API_URL, MAUTIC_API_USER, MAUTIC_API_PASSWORD } = process.env;
+const { MAUTIC_API_URL, MAUTIC_API_USER, MAUTIC_API_PASSWORD, MAUTIC_LIMIT_DATA = 10 } = process.env;
 
 export type TChannel = 'message' | 'email';
 
@@ -77,8 +77,9 @@ export class MauticApiService {
     return data;
   }
 
-  async getDNCContacts(limit = 10): Promise<DNCContact[]> {
+  async getDNCContacts(): Promise<DNCContact[]> {
     const ids = this.getIds();
+    const limit = Number(MAUTIC_LIMIT_DATA)
     let dncData: DNCContact[] = [];
     if (!ids) {
       const { stats } = await this.fetchDNC({
