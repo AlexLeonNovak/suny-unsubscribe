@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: __dirname + '/../.env' });
 import {MauticApiService} from './services/mautic-api.service';
 import {SunyApiService} from './services/suny-api.service';
 import {Logger} from './utils/logger';
