@@ -9,10 +9,16 @@ const bootstrap = async () => {
   const sunyApi = new SunyApiService();
 
   try {
+    console.log(new Date(), 'Start process');
     const dncContacts = await mauticApi.getDNCContacts();
     const leadIds = dncContacts.map(({lead_id}) => lead_id);
-    const result = await sunyApi.removeMailingBulk(leadIds);
-    logger.log(JSON.stringify({ leadIds, result }));
+    console.log(new Date(), 'Count leads:', leadIds.length);
+    if (leadIds) {
+      const result = await sunyApi.removeMailingBulk(leadIds);
+      logger.log(JSON.stringify({ leadIds, result }));
+    }
+    console.log(new Date(), 'End');
+    console.log('\n');
   } catch (e) {
     logger.error(e.message);
     console.error(e);
